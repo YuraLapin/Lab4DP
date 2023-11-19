@@ -3,9 +3,10 @@
     public class Encryptor
     {
         private const int BLOCK_SIZE = 16;
-        private const int KEY_SIZE = 4;
         private const int ROUNDS = 16;
         private const int SYMBOL_SIZE = 8;
+        private const int KEY_SIZE = 32;
+        private const int KEY_CHARS = KEY_SIZE / SYMBOL_SIZE;
         private const int keyShift = 1;
         private const int symbolsInBlock = BLOCK_SIZE / SYMBOL_SIZE;
         
@@ -169,7 +170,7 @@
             string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             string key = "";
 
-            for (int i = 0; i < KEY_SIZE; ++i)
+            for (int i = 0; i < KEY_CHARS; ++i)
             {
                 char curChar = alphabet[random.Next(alphabet.Length)];
                 key += curChar;
