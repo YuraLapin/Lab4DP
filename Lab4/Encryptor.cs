@@ -3,7 +3,7 @@
     public class Encryptor
     {
         private const int BLOCK_SIZE = 16;
-        private const int KEY_SIZE = 16;
+        private const int KEY_SIZE = 4;
         private const int ROUNDS = 16;
         private const int SYMBOL_SIZE = 8;
         private const int keyShift = 1;
