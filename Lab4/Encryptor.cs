@@ -2,20 +2,18 @@
 {
     public class Encryptor
     {
+        private const int SYMBOL_SIZE = 16;
+
         private const int BLOCK_SIZE = 16;
-        private const int ROUNDS = 16;
-        private const int SYMBOL_SIZE = 8;
+        private const int SYMBOLS_IN_BLOCK = BLOCK_SIZE / SYMBOL_SIZE;
+
         private const int KEY_SIZE = 32;
-        private const int KEY_CHARS = KEY_SIZE / SYMBOL_SIZE;
-        private const int keyShift = 1;
-        private const int symbolsInBlock = BLOCK_SIZE / SYMBOL_SIZE;
-        
-        private ulong keyUlong;
+        private const int SYMBOLS_IN_KEY = KEY_SIZE / SYMBOL_SIZE;
 
         private ulong StringToUlong(string str)
         {
             ulong result = 0;
-            for (int i = 0; i < str.Length; ++i)
+            for (int i = str.Count() - 1; i >= 0; --i)
             {
                 result = result << SYMBOL_SIZE;
                 result += str[i];
@@ -26,7 +24,7 @@
         private string UlongToString(ulong ul)
         {
             string str = "";
-            for (int i = 0; i < symbolsInBlock / 2; ++i)
+            for (int i = 0; i < SYMBOLS_IN_BLOCK; ++i)
             {
                 str += (char)ul;
                 ul = ul >> SYMBOL_SIZE;
@@ -34,133 +32,47 @@
             return str;
         }
 
-        private void ShiftLeft(ref string oldKey)
-        {
-            string newKey = oldKey.Substring(keyShift);
-            newKey += oldKey.Substring(0, keyShift);
-            oldKey = newKey;
-            keyUlong = StringToUlong(oldKey);
-        }
-
-        private void ShiftRight(ref string oldKey)
-        {
-            string newKey = oldKey.Substring(oldKey.Length - keyShift);
-            newKey += oldKey.Substring(0, oldKey.Length - keyShift);
-            oldKey = newKey;
-            keyUlong = StringToUlong(oldKey);
-        }
-
         private string PadString(string str)
         {
-            int count = symbolsInBlock - (str.Length % symbolsInBlock);
-            if (count != symbolsInBlock)
+            while (str.Count() % SYMBOLS_IN_BLOCK != 0)
             {
-                for (int i = 0; i < count; ++i)
-                {
-                    str += " ";
-                }
+                str = str + " ";
             }
             return str;
         }
 
-        private string EncryptBlock(string block)
+        private string EncryptBlock(string block, string key)
         {
-            for (int i = 0; i < ROUNDS; ++i)
-            {
-                string stringLeft = block.Substring(0, block.Length / 2);
-                string stringRight = block.Substring(block.Length / 2);
-
-                ulong ulongLeft = StringToUlong(stringLeft);
-                ulong ulongRight = StringToUlong(stringRight);
-
-                ulong tmp = ulongLeft ^ (ulongRight ^ keyUlong);
-                ulongLeft = ulongRight;
-                ulongRight = tmp;
-
-                stringLeft = UlongToString(ulongLeft);
-                stringRight = UlongToString(ulongRight);
-
-                block = stringLeft + stringRight;
-            }
+            ulong ulongBlock = StringToUlong(block);
+            ulong k = StringToUlong(key);
+            ulongBlock = ulongBlock ^ StringToUlong(key);
+            block = UlongToString(ulongBlock);
             return block;
-        }
-
-        private string DecryptBlock(string block)
-        {
-            for (int i = 0; i < ROUNDS; ++i)
-            {
-                string stringLeft = block.Substring(0, block.Length / 2);
-                string stringRight = block.Substring(block.Length / 2);
-
-                ulong ulongLeft = StringToUlong(stringLeft);
-                ulong ulongRight = StringToUlong(stringRight);
-
-                ulong tmp = ulongRight ^ (ulongLeft ^ keyUlong);
-                ulongRight = ulongLeft;
-                ulongLeft = tmp;
-
-                stringLeft = UlongToString(ulongLeft);
-                stringRight = UlongToString(ulongRight);
-
-                block = stringLeft + stringRight;
-            }
-            return block;
-        }
-
-        private void Initialize(string key)
-        {
-            keyUlong = StringToUlong(key);
         }
 
         public string Encrypt(string text, string key)
         {
-            Initialize(key);
             string result = "";
             text = PadString(text);
-            int count = text.Length / symbolsInBlock;
+            int count = text.Length / SYMBOLS_IN_BLOCK;
             for (int i = 0; i < count; ++i)
             {
-                int start = i * symbolsInBlock;
-                result += EncryptBlock(text.Substring(start, symbolsInBlock));
-                ShiftRight(ref key);
+                int start = i * SYMBOLS_IN_BLOCK;
+                result += EncryptBlock(text.Substring(start, SYMBOLS_IN_BLOCK), key);
             }
             return result;
         }
 
         public string Decrypt(string text, string key)
         {
-            string tmpKey = key;
-
-            Initialize(key);
-
-            if (text.Length % symbolsInBlock != 0)
-            {
-                return "Ошибка: зашифрованная строка в неверном формате.";
-            }
-
             string result = "";
-            int count = text.Length / symbolsInBlock;
-            for (int i = count - 1; i >= 0; --i)
+            text = PadString(text);
+            int count = text.Length / SYMBOLS_IN_BLOCK;
+            for (int i = 0; i < count; ++i)
             {
-                ShiftLeft(ref key);
-                int start = i * symbolsInBlock;
-                result = DecryptBlock(text.Substring(start, symbolsInBlock)) + result;
+                int start = i * SYMBOLS_IN_BLOCK;
+                result += EncryptBlock(text.Substring(start, SYMBOLS_IN_BLOCK), key);
             }
-
-            key = tmpKey;
-            text = Encrypt(result, key);
-
-            key = tmpKey;
-            Initialize(key);
-            result = "";
-            count = text.Length / symbolsInBlock;
-            for (int i = count - 1; i >= 0; --i)
-            {
-                ShiftLeft(ref key);
-                int start = i * symbolsInBlock;
-                result = DecryptBlock(text.Substring(start, symbolsInBlock)) + result;
-            }
-
             return result;
         }
 
@@ -170,7 +82,7 @@
             string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
             string key = "";
 
-            for (int i = 0; i < KEY_CHARS; ++i)
+            for (int i = 0; i < SYMBOLS_IN_KEY; ++i)
             {
                 char curChar = alphabet[random.Next(alphabet.Length)];
                 key += curChar;
